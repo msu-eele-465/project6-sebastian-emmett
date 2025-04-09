@@ -56,39 +56,37 @@ void _led_bar_update(void){
 
 void led_bar_update_pattern(void)
 {
-    switch (curr_num)
+    switch (pattern_type)
     {
 		// off
 		case 0:
 			fill_count = 0;
 			break;
 
-		// fill right
+		// heating up, fill right
 		case 1:
-			// reset count if MSB is set
-			// this will reset if fill left was previously selected
-			if ((fill_count & 0x80) == 1)
+			// this will reset the count if fill left was previously selected
+			if (fill_count & 0x01)
 			{
 				fill_count = 0;
 			}
 			// advance count right
 			else{
-				(fill_count) ? (fill_count = 1) : (fill_count++ << 1);
+				fill_count = (fill_count >> 1) + 128;
 			}
 
 			break;
 
-		// fill left
+		// cooling down, fill left
 		case 2:
-			// reset count if LSB is set
-			// this will reset if fill right was previously selected
-			if ((fill_count & 0x01) == 1)
+			// this will reset the count if fill right was previously selected
+			if (fill_count & 0x80)
 			{
 				fill_count = 0;
 			}
 			// advance count left
 			else{
-				(fill_count) ? (fill_count = 128) : (fill_count >> 1, fill_count += 128);
+				fill_count = (fill_count << 1) + 1;
 			}
 
 			break;
@@ -98,6 +96,4 @@ void led_bar_update_pattern(void)
 	}
 
 	_led_bar_update();
-
-    return;
 }

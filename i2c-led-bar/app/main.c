@@ -40,16 +40,19 @@ int main(void)
 			{
 				switch (received_buffer[0])
 				{
+					// off
 					case '=':
 					case 'D':
 						pattern_type = 0;
 						break;
 
+					// heating up, fill right
 					case '+':
 					case 'A':
 						pattern_type = 1;
 						break;
 
+					// cooling down, fill left
 					case '-':
 					case 'B':
 						pattern_type = 2;
