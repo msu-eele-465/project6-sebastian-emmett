@@ -133,8 +133,9 @@ int main(void)
 					break;
 
 				case '#':
-					line_1[0] = '0' + received_buffer[1];
-					line_1[1] = '0' + received_buffer[2];
+					// set window size
+					// right now the tens place is not printed to the lcd
+					line_1[0] = '0' + received_buffer[2];
 					break;
 
 				default:
