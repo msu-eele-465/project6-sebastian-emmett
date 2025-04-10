@@ -139,7 +139,8 @@ __interrupt void TIMER1_B0_ISR(void)
         // Send the key if not locked
         if (!locked)
         {
-            i2c_send_to_both(key);
+            char data_to_send[3] = {'K', '0', key};
+            i2c_send(SLAVE1_ADDR, data_to_send);
         }
 
         // ---------------------------

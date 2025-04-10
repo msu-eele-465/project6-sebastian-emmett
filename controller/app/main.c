@@ -220,7 +220,8 @@ int main(void)
                         // set state LED to blueish color, for unlocked
                         rgb_set(0x1D, 0xA2, 0xC4);
                         // Send 'U' to both slaves
-                        i2c_send_to_both('U');
+                        char data_to_send[3] = {'U', '0', 'U'};
+                        i2c_send(SLAVE1_ADDR, data_to_send);
                     }
                     // Otherwise => stay locked, reset
                     unlocking = false;

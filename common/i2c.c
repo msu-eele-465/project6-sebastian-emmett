@@ -7,8 +7,8 @@
 // Helpful Brock video :D https://www.youtube.com/watch?v=BvITEarUMkc
 
 // Volatile variables for I2C slave receive handling
-// Buffer to store up to 2 received bytes
-volatile char rx_buffer[2];
+// Buffer to store up to 3 received bytes
+volatile char rx_buffer[3];
 // Number of bytes received in current transaction
 volatile uint8_t rx_count = 0;
 // Flag for completed transaction
@@ -29,6 +29,9 @@ volatile bool i2c_tx_temp_complete = true;
 volatile bool i2c_tx_temp_partial = false;
 // Transmission complete flag
 volatile bool i2c_tx_complete = true;
+// Buffer and index for sending three bytes
+volatile char tx_buffer[3];
+volatile uint8_t tx_index = 0;
 
 void i2c_master_init(void)
 {
@@ -48,8 +51,8 @@ void i2c_master_init(void)
 
     // Auto STOP after UCB0TBCNT bytes
     UCB0CTLW1 |= UCASTP_2;
-    // Send 1 byte per transaction
-    UCB0TBCNT = 1;
+    // Send 3 bytes per transaction
+    UCB0TBCNT = 3;
     
     // Configure pins P1.2 (SDA) and P1.3 (SCL)
     // P1.3 SCL
@@ -95,39 +98,30 @@ void i2c_slave_init(uint8_t address)
     UCB0IE |= UCRXIE;
 }
 
-void i2c_send(uint8_t slave_address, char data)
+void i2c_send(uint8_t slave_address, char data[3])
 {
-    // Send 1 byte per transaction
-    UCB0TBCNT = 1;
+    // Store data for ISR
+    tx_buffer[0] = data[0];
+    tx_buffer[1] = data[1];
+    tx_buffer[2] = data[2];
+    tx_index = 0;
     // Toggle tx complete flag false
     i2c_tx_complete = false;
-    // Store data for ISR
-    tx_data = data;
     // Set slave address
     UCB0I2CSA = slave_address;
     // Generate START
     UCB0CTLW0 |= UCTXSTT;
 }
 
-uint8_t i2c_get_received_data(char* data)
-{
-    if (transaction_complete)
-    {
-        if (rx_bytes == 1)
-        {
-            data[0] = rx_buffer[0];
-        }
-        else if (rx_bytes == 2)
-        {
-            data[1] = rx_buffer[0];
-            data[2] = rx_buffer[1];
-            rx_bytes = 0;
+uint8_t i2c_get_received_data(char* data) {
+    if (transaction_complete) {
+        uint8_t i = 0;
+        for (i = 0; i < rx_bytes; i++) {
+            data[i] = rx_buffer[i];
         }
         transaction_complete = false;
         return rx_bytes;
-    }
-    else
-    {
+    } else {
         return 0;
     }
 }
@@ -152,7 +146,7 @@ void i2c_send_temp(int16_t temp)
 void i2c_send_to_both(char data)
 {
     // Send to first slave
-    i2c_send(SLAVE1_ADDR, data);
+    //i2c_send(SLAVE1_ADDR, data);
     //int i = 0;
     //for (i = 1; i < 100; i++);   // Yeahhh LOL this is not how this is supposed to be done but the interrupt flags are giving me such a headache that I've just moved away from relying on the stop flag and resorted to this lol
     //i2c_send(SLAVE2_ADDR, data);       // Send to second slave
@@ -161,65 +155,51 @@ void i2c_send_to_both(char data)
 #pragma vector=EUSCI_B0_VECTOR
 __interrupt void EUSCI_B0_I2C_ISR(void)
 {
-    // Start condition detected
     if (UCB0IFG & UCSTTIFG)
     {
         rx_count = 0;
-        // Clear start condition flag
         UCB0IFG &= ~UCSTTIFG;
     }
-    // Byte received
-    if (UCB0IFG & UCRXIFG)
-    {
-        if (rx_count < 2)
-        {
-            // Clears UCRXIFG
+    if (UCB0IFG & UCRXIFG) {
+        if (rx_count < 3) {
             rx_buffer[rx_count] = UCB0RXBUF;
             rx_count++;
-        }
-        else
-        {
-            // Discard extra bytes
-            UCB0RXBUF;
+        } else {
+            UCB0RXBUF; // Discard extra bytes
         }
     }
-    // Stop condition detected
-    if (UCB0IFG & UCSTPIFG)
-    {
-        transaction_complete = true;
-        rx_bytes = rx_count;
-        // Clear stop condition flag
-        UCB0IFG &= ~UCSTPIFG;
-    }
-
-    // Master transmit handling
-    // Master transmit interrupt
     if (UCB0IFG & UCTXIFG0)
     {
-        if (i2c_tx_complete == false)
+        if (i2c_tx_complete == false && tx_index < 3)
         {
-            // Send data for master
-            UCB0TXBUF = tx_data;
-            // Mark transmission complete
-            i2c_tx_complete = true;
+            UCB0TXBUF = tx_buffer[tx_index++];
         }
-        if (i2c_tx_temp_complete == false)
+        else if (i2c_tx_temp_complete == false)
         {
             if (!i2c_tx_temp_partial)
             {
-                // Send temperature whole number
                 UCB0TXBUF = tx_temp_whole;
-                // Mark partial transmission complete
                 i2c_tx_temp_partial = true;
-            } else {
-                // Send temperature tenths number
+            }
+            else
+            {
                 UCB0TXBUF = tx_temp_tenths;
-                // Mark transmission complete
                 i2c_tx_temp_partial = false;
                 i2c_tx_temp_complete = true;
             }
-            
         }
-        
+    }
+    if (UCB0IFG & UCSTPIFG)
+    {
+        if (UCB0CTLW0 & UCMST)
+        {
+            i2c_tx_complete = true;
+        }
+        else
+        {
+            transaction_complete = true;
+            rx_bytes = rx_count;
+        }
+        UCB0IFG &= ~UCSTPIFG;
     }
 }
