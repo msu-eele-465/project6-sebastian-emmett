@@ -62,7 +62,7 @@ void lcd_init(void)
 /* --- general use --- */
 
 
-__attribute__((noinline)) void lcd_print_line(const char *line_chars, uint8_t line_num)
+void lcd_print_line(const char *line_chars, uint8_t line_num)
 {
 	// set the cursor to the beginning of the selected line
 	if (line_num)
@@ -92,7 +92,24 @@ __attribute__((noinline)) void lcd_print_line(const char *line_chars, uint8_t li
 	}
 }
 
-__attribute__((noinline)) void lcd_clear_display(void)
+void lcd_create_character(const char *bitmap, uint8_t index)
+{
+	lcd_set_cgram_addr(index, 0);
+
+	// write the bitmap into the selected spot
+	const char *bitmap_end = bitmap + 8;
+
+	while (bitmap < bitmap_end)
+	{
+		lcd_cmd_write((uint8_t) *bitmap++);
+	}
+
+	// and set the cursor to the last display position
+	//	because if it is not set then the cursor would not display
+	lcd_set_ddram_addr(0x4F);
+}
+
+void lcd_clear_display(void)
 {
 	lcd_set_mode(0, 0);
 
@@ -137,6 +154,16 @@ void lcd_set_mode(uint8_t rs, uint8_t rw)
 	}
 
 	__delay_cycles(2);
+}
+
+void lcd_set_cgram_addr(uint8_t index, uint8_t sub_index)
+{
+	lcd_set_mode(0, 0);
+
+	// the index is shifted left three so it will select the
+	//	appropriate character, and the sub_index will select
+	//	the position within that character
+	lcd_cmd_inst(0x40 | (index << 3 & 0x38) | (sub_index & 0x07));
 }
 
 void lcd_set_ddram_addr(uint8_t address)
