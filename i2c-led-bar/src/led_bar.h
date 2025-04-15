@@ -6,14 +6,8 @@
 // 	but has been remapped due to hardware issues.
 void led_bar_init(void);
 
-// update the output displayed on the LED bar
-void led_bar_update(unsigned char update_value);
-
 // update the pattern logic on the LED bar, this may entail resetting a
 // 	pattern or switching to a new one.
 void led_bar_update_pattern(void);
-
-// a delay which happens between pattern updates, can be interrupted by the controller
-void led_bar_delay(void);
 
 #endif

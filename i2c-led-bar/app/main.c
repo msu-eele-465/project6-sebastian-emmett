@@ -5,26 +5,11 @@
 
 // Globals for LED bar control
 
-// Transition period -> 1s
-int transition_period = 16;
-// Current pattern number
-char curr_num = '0';
-// Previous pattern number for reset logic
-char prev_num = '0';
-// System lock state
-bool locked = true;
-// Flag for new pattern received
-bool num_update = false;
-// Flag to reset pattern
-bool reset_pattern = false;
-// Char to hold incoming data from i2c
+// used within the led bar for update logic
+uint8_t pattern_type = 0;
+
+// For holding incoming data from i2c
 char received_buffer[3];
-// Char for received character
-char received_char = 'a';
-// Bool to hold if we're updating the pattern
-bool update_pattern = false;
-// Bool to hold if we're updating the window
-bool update_window = false;
 
 // Use SLAVE2_ADDR from i2c.h
 #define SLAVE_ADDRESS SLAVE2_ADDR
@@ -33,10 +18,6 @@ int main(void)
 {
     // Stop watchdog timer
     WDTCTL = WDTPW | WDTHOLD;
-
-    // Set P1.0 as output for debug
-    P1DIR |= BIT1;
-    P1OUT &= ~BIT1;
 
     while (true)
     {
@@ -50,56 +31,50 @@ int main(void)
         i2c_slave_init(SLAVE_ADDRESS);
         __enable_interrupt();
 
+		static uint16_t delay = 0;
+
         while (true)
         {
-            // Poll the i2c for new data
-            if (i2c_get_received_data(received_buffer) == 1)
-            {
-                // Update received_char
-                received_char = received_buffer[0];
-                // Process received data to update LED bar state
-                if (received_char == 'D')
-                {
-                    // Lock the system and clear the LED bar
-                    locked = true;
-                    led_bar_update(0x00);
-                }
-                else if (received_char == 'A')
-                {
-                    // Toggle update_window
-                    update_window = !update_window;
-                }
-                else if (received_char == 'U')
-                {
-                    // Unlock the system
-                    locked = false;
-                }
-                else if (received_char == 'B')
-                {
-                    // Enable update_pattern
-                    update_pattern = true;
-                }
-                else if (received_char >= '0' && received_char <= '7' && update_pattern && !update_window)
-                {
-                    // Clear update_pattern
-                    update_pattern = false;
-                    // Store previous pattern
-                    prev_num = curr_num;
-                    // Set new pattern
-                    curr_num = received_char;
-                    // Flag new pattern received
-                    num_update = true;
-                    // Reset if same pattern
-                    reset_pattern = (prev_num == curr_num);
-                }
-            }
+            // update pattern_type if new data received
+			if (i2c_get_received_data(received_buffer))
+			{
+				switch (received_buffer[0])
+				{
+					// off
+					case '=':
+					case 'D':
+						pattern_type = 0;
+						break;
 
-            // Update LED bar if not locked
-            if (!locked)
-            {
-                led_bar_update_pattern();
-                led_bar_delay();
-            }
+					// heating up, fill right
+					case '+':
+					case 'A':
+						pattern_type = 1;
+						break;
+
+					// cooling down, fill left
+					case '-':
+					case 'B':
+						pattern_type = 2;
+						break;
+
+					default:
+						break;
+				}
+			}
+
+			if (!delay)
+			{
+				// delay for at least 1/16th of a second
+				// 	because the above instructions influence timing
+				// (~1 MHz clock => 62500 cycles = ~1/16s)
+				delay = 62500;
+
+				led_bar_update_pattern();
+			}
+			else{
+				delay--;
+			}
         }
     }
 }
