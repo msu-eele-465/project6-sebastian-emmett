@@ -172,7 +172,7 @@ __interrupt void TIMER1_B0_ISR(void)
                     i2c_send(SLAVE1_ADDR, data_to_send);
                     setting_window = false;
                     // Then, set lm19 window size
-                    set_window_size(window_size);
+                    set_lm19_window_size(window_size);
                 }
             }
 

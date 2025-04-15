@@ -4,8 +4,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define SLAVE1_ADDR 0x48
-#define SLAVE2_ADDR 0x49
+#define RTC_ADDR    0x68
+#define LM92_ADDR   0x48
+#define SLAVE1_ADDR 0x49
+#define SLAVE2_ADDR 0x50
 
 void i2c_master_init(void);
 void i2c_slave_init(uint8_t address);

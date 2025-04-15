@@ -46,7 +46,7 @@ int main(void)
     // Timer_B1 => ~50 ms interrupt
     init_keyscan_timer();
     // Initialize LM19 temperature sensor
-    temp_sensor_init();
+    lm19_sensor_init();
     // Initialize I2C module as master
     i2c_master_init();
 
