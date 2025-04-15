@@ -6,21 +6,14 @@
 #include "../src/lm19.h"
 
 extern bool key_down;
-extern char curr_key;
-extern char prev_key;
-extern bool locked;
-extern bool unlocking;
-extern int base_transition_period;
-extern char curr_num;
-extern char prev_num;
-extern bool num_update;
-extern bool reset_pattern;
 
-extern bool setting_pattern;
 extern bool setting_window;
-extern char curr_pattern;
+extern uint8_t window_size;
+int window_digits_entered = 0;
 
-uint8_t temp_window_size = 0;
+extern bool setting_temperature;
+extern uint16_t target_temperature;
+int temp_digits_entered = 0;
 
 // 4x4 Keypad Layout
 static const char KEYPAD_MAP[4][4] =
@@ -132,86 +125,89 @@ __interrupt void TIMER1_B0_ISR(void)
         // Set P6.6 LED on
         P6OUT |= BIT6;
 
-        // Shift curr_key -> prev_key, store the new key
-        prev_key = curr_key;
-        curr_key = key;
-
-        // Send the key if not locked
-        if (!locked)
-        {
-            i2c_send_to_both(key);
-        }
-
         // ---------------------------
         // Additional Logic
         // ---------------------------
         
-        // 1) If 'D' => set locked to true
-        if (key == 'D')
+        // 1) If 'A' => Heat Mode
+        if (key == 'A')
         {
-            locked = true;
-            unlocking = false;
-            num_update = false;
+            char data_to_send[3] = {'A', '0', '0'};
+            i2c_send(SLAVE1_ADDR, data_to_send);
         }
-        // 2) If 'A' => base_transition_period -= 4, min=4
-        else if (key == 'A' && !locked)
+        // 2) If 'B' => Cool Mode
+        else if (key == 'B')
         {
-            if (setting_window == false)
-            {
-                temp_window_size = 0;
-                setting_window = true;
-            }
-            else {
-                setting_window = false;
-                set_window_size(temp_window_size);
-            }
+            char data_to_send[3] = {'B', '0', '0'};
+            i2c_send(SLAVE1_ADDR, data_to_send);
         }
-        // 3) If 'B' => base_transition_period += 4
-        else if (key == 'B' && !locked)
+        // 3) If 'C' => Match Mode
+        else if (key == 'C')
         {
-            setting_pattern = true;
+            char data_to_send[3] = {'C', '0', '0'};
+            i2c_send(SLAVE1_ADDR, data_to_send);
         }
-        // 4) If key is numeric => update prev_num/curr_num, set flags
+        // 4) If 'D' => Off Mode
+        else if (key == 'D')
+        {
+            char data_to_send[3] = {'D', '0', '0'};
+            i2c_send(SLAVE1_ADDR, data_to_send);
+        }
+        // 5) If key is numeric => update window/temp
         else if (key >= '0' && key <= '9')
         {
-            // SHIFT
-            prev_num = curr_num;
-            curr_num = key;
-
-            // SET num_update = true
-            num_update = true;
-
-            // If prev_num == curr_num => reset_pattern = true
-            if (prev_num == curr_num)
-            {
-                reset_pattern = true;
-            }
-
-            if (setting_pattern)
-            {
-                curr_pattern = curr_num;
-                setting_pattern = false;
-            }
-
             if (setting_window)
             {
-                if (temp_window_size == 0)
+                // Update window_size with new incoming value
+                window_size = window_size * 10 + (key - '0');
+                // Increment digit counter
+                window_digits_entered++;
+                if (window_digits_entered == 2)
                 {
-                    // If nothing has been entered for the window size, set it to the num pressed
-                    temp_window_size = curr_num - '0';
-                } else if (temp_window_size < 10) {
-                    // If a number already has been entered, multiply it by 10 (shift to 10s place) and add new num
-                    temp_window_size = temp_window_size * 10;
-                    temp_window_size = temp_window_size + curr_num - '0';
+                    // If all digits aquired, calculate tens and ones
+                    char tens = window_size / 10;
+                    char ones = window_size % 10;
+                    // Send it out on i2c
+                    char data_to_send[3] = {'#', tens, ones};
+                    i2c_send(SLAVE1_ADDR, data_to_send);
+                    setting_window = false;
+                    // Then, set lm19 window size
+                    set_lm19_window_size(window_size);
+                }
+            }
+
+            if (setting_temperature)
+            {
+                // Update target_temperature with new incoming value
+                target_temperature = target_temperature * 10 + (key - '0');
+                // Increment digit counter
+                temp_digits_entered++;
+                if (temp_digits_entered == 3)
+                {
+                    // If all digits aquired, calculate whole and decimal
+                    char whole = target_temperature / 10;
+                    char decimal = target_temperature % 10;
+                    // Send it out on i2c
+                    char data_to_send[3] = {'*', whole, decimal};
+                    i2c_send(SLAVE1_ADDR, data_to_send);
+                    setting_temperature = false;
                 }
             }
         }
-        else if (key == '#' && !locked)
+        // 6) If '#' => Set Window Mode
+        else if (key == '#')
         {
-            fahrenheit_mode = !fahrenheit_mode;
+            setting_window = true;
+            window_size = 0;
+            window_digits_entered = 0;
         }
-        // else: ignore other keys (#, C)
-
+        // 7) If '*' => Set Temperature Mode
+        else if (key == '*')
+        {
+            setting_temperature = true;
+            target_temperature = 0;
+            temp_digits_entered = 0;
+        }
     } 
     else if (key == 0 && key_down == true) 
     {

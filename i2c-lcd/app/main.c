@@ -11,7 +11,6 @@
 // this is used in the slave init for i2c
 #define SLAVE_ADDRESS SLAVE1_ADDR
 
-
 /* --- program --- */
 
 

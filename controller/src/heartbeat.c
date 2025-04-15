@@ -30,14 +30,4 @@ __interrupt void TIMER0_B0_ISR(void)
 {
     // Toggle heartbeat LED!
     P1OUT ^= BIT0;
-
-    // Decrement pass_timer if we're in unlocking mode
-    // We'll refer to unlocking from main
-    extern bool unlocking;
-    extern volatile int pass_timer;
-
-    if (unlocking && pass_timer > 0)
-    {
-        pass_timer--;
-    }
 }

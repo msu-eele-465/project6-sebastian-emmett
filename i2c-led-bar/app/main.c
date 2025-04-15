@@ -26,8 +26,8 @@ bool update_pattern = false;
 // Bool to hold if we're updating the window
 bool update_window = false;
 
-// Use SLAVE1_ADDR from i2c.h
-#define SLAVE_ADDRESS SLAVE1_ADDR
+// Use SLAVE2_ADDR from i2c.h
+#define SLAVE_ADDRESS SLAVE2_ADDR
 
 int main(void)
 {
