@@ -111,6 +111,10 @@ void i2c_send(uint8_t slave_address, char data[3])
     UCB0I2CSA = slave_address;
     // Generate START
     UCB0CTLW0 |= UCTXSTT;
+
+    // Delay
+    int i;
+    for (i = 0; i < 100; i = i + 1){}
 }
 
 uint8_t i2c_get_received_data(char* data) {
@@ -168,25 +172,19 @@ __interrupt void EUSCI_B0_I2C_ISR(void)
             UCB0RXBUF; // Discard extra bytes
         }
     }
+
+    // If transmitting
     if (UCB0IFG & UCTXIFG0)
     {
-        if (i2c_tx_complete == false && tx_index < 3)
+        if (tx_index == 2)
         {
-            UCB0TXBUF = tx_buffer[tx_index++];
+            UCB0TXBUF = tx_buffer[tx_index];
+            tx_index = 0;
         }
-        else if (i2c_tx_temp_complete == false)
+        else
         {
-            if (!i2c_tx_temp_partial)
-            {
-                UCB0TXBUF = tx_temp_whole;
-                i2c_tx_temp_partial = true;
-            }
-            else
-            {
-                UCB0TXBUF = tx_temp_tenths;
-                i2c_tx_temp_partial = false;
-                i2c_tx_temp_complete = true;
-            }
+            UCB0TXBUF = tx_buffer[tx_index];
+            tx_index++;
         }
     }
     if (UCB0IFG & UCSTPIFG)

@@ -9,7 +9,6 @@ static uint8_t window_size = 3;
 static uint8_t num_samples = 0;
 static uint8_t index = 0;
 static int32_t sum = 0;
-static int16_t temp_to_send = 0;
 static int16_t average = 0;
 
 
@@ -111,15 +110,11 @@ __interrupt void TIMER2_B0_ISR(void)
     if (num_samples == window_size)
     {
         average = get_average();
-        if (fahrenheit_mode)
-        {
-            // T_F = T_C * 9/5 + 320, in tenths
-            temp_to_send = (average * 9 / 5) + 320;
-        }
-        else
-        {
-            temp_to_send = average;
-        }
-        // i2c_send_temp(temp_to_send); #FIXME
+
+        char whole = average / 10;
+        char decimal = average % 10;
+        
+        char data_to_send[3] = {'I', whole, decimal};
+        i2c_send(SLAVE1_ADDR, data_to_send);
     }
 }
