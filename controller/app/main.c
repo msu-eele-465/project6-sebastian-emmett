@@ -13,6 +13,7 @@
 #include "../../common/i2c.h"
 #include "msp430fr2355.h"
 #include "../src/lm19.h"
+#include "src/temperature_timer.h"
 
 // ----------------------------------------------------------------------------
 // Globals! (yes they deserve their own lil space)
@@ -45,8 +46,8 @@ int main(void)
     init_responseLED();
     // Timer_B1 => ~50 ms interrupt
     init_keyscan_timer();
-    // Initialize LM19 temperature sensor
-    lm19_sensor_init();
+    // Initialize temperature sensors
+    init_temperature_sensors();
     // Initialize I2C module as master
     i2c_master_init();
 

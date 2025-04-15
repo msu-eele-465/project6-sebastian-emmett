@@ -16,17 +16,14 @@ volatile bool transaction_complete = false;
 // Number of bytes in last completed transaction
 volatile uint8_t rx_bytes = 0;
 
-// Variables for master transmit (unchanged)
-// Data to send
-volatile char tx_data;
-// Temperature whole value to send
-volatile int8_t tx_temp_whole = 0;
-// Temperature tenths to send
-volatile int8_t tx_temp_tenths = 0;
-// Transmission complete flag for temp
-volatile bool i2c_tx_temp_complete = true;
-// Transmission partially complete flag
-volatile bool i2c_tx_temp_partial = false;
+// Volatile variables for i2c_read
+// Buffer for received bytes
+volatile char rx_data[2];
+// Index for received bytes
+volatile uint8_t rx_index = 0;
+// Flag for read completion
+volatile bool i2c_rx_complete = false;
+
 // Transmission complete flag
 volatile bool i2c_tx_complete = true;
 // Buffer and index for sending three bytes
@@ -130,47 +127,75 @@ uint8_t i2c_get_received_data(char* data) {
     }
 }
 
-void i2c_send_temp(int16_t temp)
+void i2c_read(uint8_t slave_address, uint8_t reg_address, uint8_t num_bytes)
 {
-    // while (!i2c_tx_complete || !i2c_tx_temp_complete); // Wait for idle state
-    // Send 2 bytes per transaction
-    UCB0TBCNT = 2;
-    // Toggle tx complete flag false
-    i2c_tx_temp_complete = false;
-    // Calculate the whole number from our given temperature
-    tx_temp_whole = temp / 10;
-    // Calculate the tenths number from our given temperature
-    tx_temp_tenths = temp % 10;
+    // Ensure transmitter mode to write register address
+    UCB0CTLW0 |= UCTR;
     // Set slave address
-    UCB0I2CSA = SLAVE1_ADDR;
+    UCB0I2CSA = slave_address;
+    // Send register address
+    UCB0TXBUF = reg_address;
+    // Wait for TX to complete
+    int i;
+    for (i = 0; i < 100; i = i + 1){}
+    // Switch to receiver mode
+    UCB0CTLW0 &= ~UCTR;
+    // Set number of bytes to receive
+    UCB0TBCNT = num_bytes;
+    // Reset rx_index
+    rx_index = 0;
+    i2c_rx_complete = false;
     // Generate START
     UCB0CTLW0 |= UCTXSTT;
-}
-
-void i2c_send_to_both(char data)
-{
-    // Send to first slave
-    //i2c_send(SLAVE1_ADDR, data);
-    //int i = 0;
-    //for (i = 1; i < 100; i++);   // Yeahhh LOL this is not how this is supposed to be done but the interrupt flags are giving me such a headache that I've just moved away from relying on the stop flag and resorted to this lol
-    //i2c_send(SLAVE2_ADDR, data);       // Send to second slave
+    // Wait for START to be sent
+    for (i = 0; i < 100; i = i + 1){}
+    // Enable RX interrupt
+    UCB0IE |= UCRXIE;
 }
 
 #pragma vector=EUSCI_B0_VECTOR
 __interrupt void EUSCI_B0_I2C_ISR(void)
 {
+    // Handle start condition
     if (UCB0IFG & UCSTTIFG)
     {
         rx_count = 0;
         UCB0IFG &= ~UCSTTIFG;
     }
-    if (UCB0IFG & UCRXIFG) {
-        if (rx_count < 3) {
-            rx_buffer[rx_count] = UCB0RXBUF;
-            rx_count++;
-        } else {
-            UCB0RXBUF; // Discard extra bytes
+
+    // Handle receive interrupt
+    if (UCB0IFG & UCRXIFG)
+    {
+        if (UCB0CTLW0 & UCMST) // Master mode
+        {
+            if (rx_index < 2) // Assuming a buffer size of 2 for i2c_read (it'll always be for this)
+            {
+                rx_data[rx_index] = UCB0RXBUF;
+                rx_index++;
+            }
+            else
+            {
+                UCB0RXBUF; // Discard extra bytes
+            }
+            if (rx_index == 2)
+            {
+                i2c_rx_complete = true;
+                rx_index = 0; // Reset for next read
+            }
         }
+        else // Slave mode
+        {
+            if (rx_count < 3) // Buffer size of 3
+            {
+                rx_buffer[rx_count] = UCB0RXBUF;
+                rx_count++;
+            }
+            else
+            {
+                UCB0RXBUF; // Discard extra bytes
+            }
+        }
+        UCB0IFG &= ~UCRXIFG; // Clear receive interrupt flag
     }
 
     // If transmitting

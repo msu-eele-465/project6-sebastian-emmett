@@ -36,16 +36,6 @@ void lm19_sensor_init(void)
     // ADC input = A4 (P1.4)
     ADCMCTL0 |= ADCINCH_4;
 
-    // Configure Timer 2 B0 for ~2Hz if SMCLK ~1MHz
-    // SMCLK/8, up mode
-    TB2CTL = TBSSEL__SMCLK | ID__8 | MC__UP | TBCLR;
-    // further /8 => total /64
-    TB2EX0 = TBIDEX__8;
-    // 1 second at ~1 MHz/128
-    TB2CCR0 = 7812;
-    // enable interrupt :D
-    TB2CCTL0 = CCIE;
-
     // Enable global interrupts
     __enable_interrupt();
 }
