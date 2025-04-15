@@ -1,6 +1,9 @@
 #include <msp430.h>
 #include <stdbool.h>
-#include "heartbeat.h"
+#include "../src/heartbeat.h"
+#include "../src/keyboard.h"
+
+unsigned int heartbeat_count = 0;
 
 // ----------------------------------------------------------------------------
 // init_heartbeat: Toggle P1.0 ~ once per second using Timer_B
@@ -30,4 +33,10 @@ __interrupt void TIMER0_B0_ISR(void)
 {
     // Toggle heartbeat LED!
     P1OUT ^= BIT0;
+    heartbeat_count++;
+    // Check for 30-second inactivity
+    if (heartbeat_count - last_mode_switch_time >= 30 && current_mode != MODE_OFF)
+    {
+        set_mode(MODE_OFF);
+    }
 }

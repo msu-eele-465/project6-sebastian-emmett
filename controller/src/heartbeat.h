@@ -4,4 +4,6 @@
 // Heartbeat LED on P1.0 (1 Hz)
 void init_heartbeat(void);
 
+extern unsigned int heartbeat_count;
+
 #endif

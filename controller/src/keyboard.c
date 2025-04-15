@@ -4,6 +4,7 @@
 #include "../src/rgb_led.h"
 #include "../../common/i2c.h"
 #include "../src/lm19.h"
+#include "../src/heartbeat.h"
 
 extern bool key_down;
 
@@ -112,6 +113,42 @@ void init_keyscan_timer(void)
 }
 
 // ----------------------------------------------------------------------------
+// set_mode
+// ----------------------------------------------------------------------------
+
+void set_mode(Mode new_mode)
+{
+    current_mode = new_mode;
+    last_mode_switch_time = heartbeat_count;  // Reset timeout
+    char mode_char;
+
+    switch (new_mode) {
+        case MODE_OFF:
+            P6OUT &= ~(BIT0 | BIT1);  // Both low
+            mode_char = 'D';
+            break;
+        case MODE_HEAT:
+            P6OUT &= ~BIT0;  // Cool low
+            P6OUT |= BIT1;   // Heat high
+            mode_char = 'A';
+            break;
+        case MODE_COOL:
+            P6OUT &= ~BIT1;  // Heat low
+            P6OUT |= BIT0;   // Cool high
+            mode_char = 'B';
+            break;
+        case MODE_MATCH:
+            P6OUT &= ~(BIT0 | BIT1);  // Both low (assumed)
+            mode_char = 'C';
+            break;
+    }
+
+    // Send mode change via I2C (maintains original behavior)
+    char data_to_send[3] = {mode_char, '0', '0'};
+    i2c_send(SLAVE1_ADDR, data_to_send);
+}
+
+// ----------------------------------------------------------------------------
 // Timer_B1 ISR => polls keypad every ~50ms and runs keyboard_interrupt logic
 // ----------------------------------------------------------------------------
 #pragma vector=TIMER1_B0_VECTOR
@@ -132,24 +169,28 @@ __interrupt void TIMER1_B0_ISR(void)
         // 1) If 'A' => Heat Mode
         if (key == 'A')
         {
+            set_mode(MODE_HEAT);
             char data_to_send[3] = {'A', '0', '0'};
             i2c_send(SLAVE1_ADDR, data_to_send);
         }
         // 2) If 'B' => Cool Mode
         else if (key == 'B')
         {
+            set_mode(MODE_COOL);
             char data_to_send[3] = {'B', '0', '0'};
             i2c_send(SLAVE1_ADDR, data_to_send);
         }
         // 3) If 'C' => Match Mode
         else if (key == 'C')
         {
+            set_mode(MODE_MATCH);
             char data_to_send[3] = {'C', '0', '0'};
             i2c_send(SLAVE1_ADDR, data_to_send);
         }
         // 4) If 'D' => Off Mode
         else if (key == 'D')
         {
+            set_mode(MODE_OFF);
             char data_to_send[3] = {'D', '0', '0'};
             i2c_send(SLAVE1_ADDR, data_to_send);
         }

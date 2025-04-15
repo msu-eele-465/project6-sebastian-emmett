@@ -30,6 +30,10 @@ bool fahrenheit_mode = false;
 bool setting_window = false;
 bool setting_temperature = false;
 
+// Mode and timeout globals
+Mode current_mode = MODE_OFF;
+unsigned int last_mode_switch_time = 0;
+
 // ----------------------------------------------------------------------------
 // MAIN
 // ----------------------------------------------------------------------------
@@ -50,6 +54,10 @@ int main(void)
     init_temperature_sensors();
     // Initialize I2C module as master
     i2c_master_init();
+
+    // Set P6.0 (Cool) and P6.1 (Heat) as outputs
+    P6DIR |= BIT0 | BIT1;
+    P6OUT &= ~(BIT0 | BIT1);  // Initially both low (Off mode)
 
     // Turn on I/O
     PM5CTL0 &= ~LOCKLPM5;
