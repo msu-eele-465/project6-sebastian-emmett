@@ -74,8 +74,8 @@ int main(void)
 		PM5CTL0 &= ~LOCKLPM5;
 
 		// create custom characters for both temperatures
-		const char *ambient_character = "";
-		const char *plant_character = "";
+		const char *ambient_character = "\x1B\x0E\x00\x1D\x17\x00\x0E\x1B";
+		const char *plant_character = "\x04\x0A\x04\x04\x04\x1F\x0E\x0E";
 
 		lcd_create_character(ambient_character, 0);
 		lcd_create_character(plant_character, 1);
@@ -105,11 +105,11 @@ int main(void)
 					break;
 
 				case 'P':
-					_update_temperature(line_0, received_buffer + 1);
+					_update_temperature(line_1, received_buffer + 1);
 					break;
 
 				case 'I':
-					_update_temperature(line_1, received_buffer + 1);
+					_update_temperature(line_0, received_buffer + 1);
 					break;
 
 				case 'T':
