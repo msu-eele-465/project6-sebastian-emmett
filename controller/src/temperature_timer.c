@@ -4,9 +4,11 @@
 #include "../src/lm19.h"
 #include "../src/lm92.h"
 #include "../src/heartbeat.h"
+#include "src/keyboard.h"
 
 int toggle_sensor = 0;
 extern unsigned int heartbeat_count;
+extern unsigned int last_mode_switch_time;
 
 void init_temperature_sensors(void)
 {
@@ -97,7 +99,7 @@ __interrupt void TIMER2_B0_ISR(void)
         
         case 2:
             toggle_sensor++;
-            char data_to_also_ALSO_send[3] = {'T', heartbeat_count / 100, heartbeat_count % 100};
+            char data_to_also_ALSO_send[3] = {'T', (heartbeat_count - last_mode_switch_time) / 100, (heartbeat_count - last_mode_switch_time) % 100};
             i2c_send(SLAVE1_ADDR, data_to_also_ALSO_send);
             break;
         
