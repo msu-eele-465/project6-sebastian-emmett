@@ -35,7 +35,7 @@ __interrupt void TIMER0_B0_ISR(void)
     P1OUT ^= BIT0;
     heartbeat_count++;
     // Check for 30-second inactivity
-    if (heartbeat_count - last_mode_switch_time >= 30 && current_mode != MODE_OFF)
+    if (heartbeat_count - last_mode_switch_time >= 300 && current_mode != MODE_OFF)
     {
         set_mode(MODE_OFF);
     }

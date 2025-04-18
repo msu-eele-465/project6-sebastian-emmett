@@ -143,7 +143,7 @@ void set_mode(Mode new_mode)
             break;
     }
 
-    // Send mode change via I2C (maintains original behavior)
+    // Send mode change via I2C
     char data_to_send[3] = {mode_char, '0', '0'};
     i2c_send(SLAVE1_ADDR, data_to_send);
 }
@@ -170,29 +170,21 @@ __interrupt void TIMER1_B0_ISR(void)
         if (key == 'A')
         {
             set_mode(MODE_HEAT);
-            char data_to_send[3] = {'A', '0', '0'};
-            i2c_send(SLAVE1_ADDR, data_to_send);
         }
         // 2) If 'B' => Cool Mode
         else if (key == 'B')
         {
             set_mode(MODE_COOL);
-            char data_to_send[3] = {'B', '0', '0'};
-            i2c_send(SLAVE1_ADDR, data_to_send);
         }
         // 3) If 'C' => Match Mode
         else if (key == 'C')
         {
             set_mode(MODE_MATCH);
-            char data_to_send[3] = {'C', '0', '0'};
-            i2c_send(SLAVE1_ADDR, data_to_send);
         }
         // 4) If 'D' => Off Mode
         else if (key == 'D')
         {
             set_mode(MODE_OFF);
-            char data_to_send[3] = {'D', '0', '0'};
-            i2c_send(SLAVE1_ADDR, data_to_send);
         }
         // 5) If key is numeric => update window/temp
         else if (key >= '0' && key <= '9')

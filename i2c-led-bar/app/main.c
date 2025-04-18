@@ -12,7 +12,7 @@ uint8_t pattern_type = 0;
 char received_buffer[3];
 
 // Use SLAVE2_ADDR from i2c.h
-#define SLAVE_ADDRESS SLAVE2_ADDR
+#define SLAVE_ADDRESS SLAVE1_ADDR
 
 int main(void)
 {
